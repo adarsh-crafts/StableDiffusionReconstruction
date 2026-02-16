@@ -1,4 +1,8 @@
-# Project specific
+# Project Specific
+HF_TOKEN.txt
+codes/diffusion_sd1/stable-diffusion/models/ldm/stable-diffusion-v1
+
+# Takagi et al. Project specific
 decoded/**
 identification/**
 mrifeat/**

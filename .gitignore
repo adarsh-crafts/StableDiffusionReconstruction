@@ -2,12 +2,12 @@
 HF_TOKEN.txt
 codes/diffusion_sd1/stable-diffusion/models/ldm/stable-diffusion-v1
 .scratch/
+nsd/
 
 # Takagi et al. Project specific
 decoded/**
 identification/**
 mrifeat/**
-/nsd/
 nsdfeat/**
 
 # Thumbnails

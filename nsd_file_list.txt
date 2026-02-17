@@ -323,7 +323,6 @@ nsd/nsddata_betas/ppdata/subj01/func1pt8mm/betas_fithrf_GLMdenoise_RR/FRACvalue_
 nsd/nsddata_betas/ppdata/subj01/func1pt8mm/betas_fithrf_GLMdenoise_RR/R2_session07.nii.gz
 nsd/nsddata_betas/ppdata/subj01/func1pt8mm/betas_fithrf_GLMdenoise_RR/R2run_session22.nii.gz
 nsd/nsddata_betas/ppdata/subj01/func1pt8mm/betas_fithrf_GLMdenoise_RR/betas_session21.hdf5
-nsd/nsd_file_list.txt
 nsd/nsddata_stimuli/stimuli/nsd/annotations/captions_val2017.json
 nsd/nsddata_stimuli/stimuli/nsd/annotations/instances_train2017.json
 nsd/nsddata_stimuli/stimuli/nsd/annotations/person_keypoints_train2017.json

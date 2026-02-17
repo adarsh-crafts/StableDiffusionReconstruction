@@ -1,5 +1,5 @@
 ## Local -> EC2
-- setup python
+### setup python
 ```
 sudo dnf groupinstall "Development Tools" -y 
 sudo dnf install openssl-devel bzip2-devel libffi-devel zlib-devel readline-devel sqlite-devel xz-devel 
@@ -10,3 +10,26 @@ sudo tar -xzf Python-3.10.13.tgz
 sudo ./configure --enable-optimizations 
 sudo make altinstall
 ```
+
+### setup NSD
+```
+cat nsd_file_list.txt | \
+xargs -P 16 -I {} bash -c '
+clean="${0#nsd/}";
+mkdir -p "$(dirname "$0")";
+wget -q -c https://natural-scenes-dataset.s3.amazonaws.com/$clean -O "$0"
+' {}
+```
+```
+cd nsd/nsddata_stimuli/stimuli/nsd/annotations/
+
+wget http://images.cocodataset.org/annotations/annotations_trainval2017.zip
+
+unzip annotations_trainval2017.zip
+
+mv nsd/nsddata_stimuli/stimuli/nsd/annotations/annotations/*.json \
+nsd/nsddata_stimuli/stimuli/nsd/annotations/
+
+rm -r nsd/nsddata_stimuli/stimuli/nsd/annotations/annotations
+```
+

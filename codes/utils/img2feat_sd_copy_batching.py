@@ -67,8 +67,8 @@ def main():
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=4,
-        help="batch size for parallel processing",
+        default=8,
+        help="batch size for processing",
     )
 
     # Set Parameters
@@ -90,7 +90,7 @@ def main():
     os.makedirs(f'../../nsdfeat/init_latent/', exist_ok=True)
     os.makedirs(f'../../nsdfeat/c/', exist_ok=True)
 
-    # Load models
+    # Load moodels
     precision = 'autocast'
     precision_scope = autocast if precision == "autocast" else nullcontext
     model = load_model_from_config(config, f"{ckpt}", gpu)
@@ -102,55 +102,57 @@ def main():
     t_enc = int(strength * ddim_steps)
     print(f"target t_enc is {t_enc} steps")
 
-    # Sample - Process in batches
-    for batch_start in tqdm(range(imgidx[0], imgidx[1], batch_size)):
-        batch_end = min(batch_start + batch_size, imgidx[1])
-        actual_batch_size = batch_end - batch_start
-        indices = list(range(batch_start, batch_end))
+    # Sample in batches
+    img_indices = list(range(imgidx[0], imgidx[1]))
+    for batch_start in tqdm(range(0, len(img_indices), batch_size)):
+        batch_end = min(batch_start + batch_size, len(img_indices))
+        batch_indices = img_indices[batch_start:batch_end]
+        current_batch_size = len(batch_indices)
         
-        print(f"Now processing images {batch_start:06} to {batch_end-1:06}")
+        print(f"Processing batch: images {batch_indices[0]:06} to {batch_indices[-1]:06}")
         
-        # Load all images and prompts for this batch
-        prompts_batch = []
-        images_batch = []
+        # Prepare batch data
+        prompts_list = []
+        init_images = []
         
-        for s in indices:
+        for s in batch_indices:
+            prompt = []
             prompts = nsda.read_image_coco_info([s], info_type='captions')
-            prompt = [p['caption'] for p in prompts]
-            prompts_batch.append(prompt)
+            for p in prompts:
+                prompt.append(p['caption'])
+            prompts_list.append(prompt)
             
             img = nsda.read_images(s)
             init_image = load_img_from_arr(img, resolution).to(device)
-            images_batch.append(init_image)
+            init_images.append(init_image)
         
         # Stack images into batch
-        init_images = torch.cat(images_batch, dim=0)  # [B, C, H, W]
-        init_latents = model.get_first_stage_encoding(model.encode_first_stage(init_images))
-
+        init_images_batch = torch.cat(init_images, dim=0)
+        init_latent = model.get_first_stage_encoding(model.encode_first_stage(init_images_batch))
+        
         with torch.no_grad():
             with precision_scope("cuda"):
                 with model.ema_scope():
+                    uc = model.get_learned_conditioning(current_batch_size * [""])
+                    
                     # Process conditioning for each image
                     c_list = []
-                    for prompt in prompts_batch:
-                        c_single = model.get_learned_conditioning(prompt).mean(axis=0)
+                    for prompt in prompts_list:
+                        c_single = model.get_learned_conditioning(prompt).mean(axis=0).unsqueeze(0)
                         c_list.append(c_single)
-                    c = torch.stack(c_list, dim=0)  # [B, ...]
+                    c = torch.cat(c_list, dim=0)
                     
-                    uc = model.get_learned_conditioning(actual_batch_size * [""])
-                    
-                    # Encode and decode batch
-                    z_enc = sampler.stochastic_encode(init_latents, 
-                                                     torch.tensor([t_enc]*actual_batch_size).to(device))
-                    samples = sampler.decode(z_enc, c, t_enc, 
-                                           unconditional_guidance_scale=scale,
-                                           unconditional_conditioning=uc)
+                    # # encode (scaled latent)
+                    # z_enc = sampler.stochastic_encode(init_latent, torch.tensor([t_enc]*current_batch_size).to(device))
+                    # # decode it
+                    # samples = sampler.decode(z_enc, c, t_enc, unconditional_guidance_scale=scale,
+                    #                         unconditional_conditioning=uc,)
         
-        # Save each result
-        for i, s in enumerate(indices):
-            init_latent = init_latents[i].cpu().detach().numpy().flatten()
+        # Save results for each image in batch
+        for i, s in enumerate(batch_indices):
+            init_latent_single = init_latent[i].cpu().detach().numpy().flatten()
             c_single = c[i].cpu().detach().numpy().flatten()
-            np.save(f'../../nsdfeat/init_latent/{s:06}.npy', init_latent)
+            np.save(f'../../nsdfeat/init_latent/{s:06}.npy', init_latent_single)
             np.save(f'../../nsdfeat/c/{s:06}.npy', c_single)
 
 

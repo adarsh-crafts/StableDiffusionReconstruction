@@ -21,15 +21,14 @@ wget -q -c https://natural-scenes-dataset.s3.amazonaws.com/$clean -O "$0"
 ' {}
 ```
 ```
+mkdir nsd/nsddata_stimuli/stimuli/nsd/annotations/
 cd nsd/nsddata_stimuli/stimuli/nsd/annotations/
 
 wget http://images.cocodataset.org/annotations/annotations_trainval2017.zip
-
 unzip annotations_trainval2017.zip
 
-mv nsd/nsddata_stimuli/stimuli/nsd/annotations/annotations/*.json \
-nsd/nsddata_stimuli/stimuli/nsd/annotations/
-
-rm -r nsd/nsddata_stimuli/stimuli/nsd/annotations/annotations
+cd ..
+mv annotations/annotations/*.json annotations/
+rm -r annotations/annotations
 ```
 

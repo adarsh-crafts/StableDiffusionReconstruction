@@ -332,11 +332,4 @@ nsd/nsddata_betas/ppdata/subj01/func1pt8mm/betas_fithrf_GLMdenoise_RR/meanbeta_s
 nsd/nsddata_betas/ppdata/subj01/func1pt8mm/betas_fithrf_GLMdenoise_RR/ncsnr.nii.gz
 nsd/nsddata_betas/ppdata/subj01/func1pt8mm/betas_fithrf_GLMdenoise_RR/ncsnr_split1.nii.gz
 nsd/nsddata_betas/ppdata/subj01/func1pt8mm/betas_fithrf_GLMdenoise_RR/ncsnr_split2.nii.gz
-nsd/nsddata_stimuli/stimuli/nsd/annotations/annotations_trainval2017.zip
-nsd/nsddata_stimuli/stimuli/nsd/annotations/captions_train2017.json
-nsd/nsddata_stimuli/stimuli/nsd/annotations/captions_val2017.json
-nsd/nsddata_stimuli/stimuli/nsd/annotations/instances_train2017.json
-nsd/nsddata_stimuli/stimuli/nsd/annotations/instances_val2017.json
-nsd/nsddata_stimuli/stimuli/nsd/annotations/person_keypoints_train2017.json
-nsd/nsddata_stimuli/stimuli/nsd/annotations/person_keypoints_val2017.json
 nsd/nsddata_stimuli/stimuli/nsd/nsd_stimuli.hdf5

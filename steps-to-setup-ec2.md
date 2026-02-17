@@ -1,4 +1,5 @@
-setup python
+## Local -> EC2
+- setup python
 ```
 sudo dnf groupinstall "Development Tools" -y 
 sudo dnf install openssl-devel bzip2-devel libffi-devel zlib-devel readline-devel sqlite-devel xz-devel 

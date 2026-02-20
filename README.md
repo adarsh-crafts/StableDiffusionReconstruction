@@ -47,10 +47,10 @@ python make_subjstim.py --featname init_latent --use_stim ave --subject subj01
 python make_subjstim_copy.py --featname c --use_stim each --subject subj01
 python make_subjstim.py --featname c --use_stim ave --subject subj01
 python ridge_copy.py --target c --roi ventral --subject subj01
-python ridge.py --target init_latent --roi early --subject subj01
+python ridge_copy.py --target init_latent --roi early --subject subj01
 
 cd codes/diffusion_sd1/
-python diffusion_decoding.py --imgidx 0 10 --gpu 1 --subject subj01 --method cvpr
+python diffusion_decoding_copy.py --imgidx 0 10 --gpu 1 --subject subj01 --method cvpr
 ```
 
 # Reconstruction with Decoded Text Prompt

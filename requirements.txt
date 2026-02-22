@@ -12,7 +12,7 @@ blessed==1.30.0
 certifi==2026.1.4
 charset-normalizer==3.4.4
 click==8.3.1
--e git+https://github.com/openai/CLIP.git#egg=clip
+-e git+https://github.com/openai/CLIP.git@dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1#egg=clip
 comm==0.2.3
 contourpy==1.3.2
 cuda-bindings==12.9.4
@@ -80,6 +80,8 @@ nvidia-nvjitlink-cu12==12.8.93
 nvidia-nvshmem-cu12==3.4.5
 nvidia-nvtx-cu12==12.8.90
 omegaconf==2.3.0
+open_clip_torch==3.2.0
+opencv-python==4.13.0.92
 packaging==26.0
 pandas==2.3.3
 parso==0.8.6

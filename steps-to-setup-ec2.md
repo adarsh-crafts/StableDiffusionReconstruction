@@ -32,3 +32,6 @@ mv annotations/annotations/*.json annotations/
 rm -r annotations/annotations
 ```
 
+
+
+wget https://github.com/intel-isl/DPT/releases/download/1_0/dpt_hybrid-midas-501f0c75.pt

@@ -122,8 +122,8 @@ def main():
     n_samples = 1
     ddim_steps = 50
     ddim_eta = 0.0
-    strength = 0.5
-    scale = 8.0
+    strength = 0.8
+    scale = 5.0
     n_iter = 5
     precision = 'autocast'
     precision_scope = autocast if precision == "autocast" else nullcontext

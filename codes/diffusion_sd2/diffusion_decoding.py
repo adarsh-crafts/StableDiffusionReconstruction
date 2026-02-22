@@ -1,3 +1,6 @@
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "stablediffusion"))
+
 import argparse, os
 from tqdm import tqdm, trange
 from torch import autocast

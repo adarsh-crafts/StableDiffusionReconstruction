@@ -42,15 +42,15 @@ python make_subjmri.py --subject subj01
 ```
 cd codes/utils/
 python img2feat_sd_copy_batching.py  --imgidx 0 73000 --gpu 0 --batch_size 30
-python make_subjstim.py --featname init_latent --use_stim each --subject subj01
-python make_subjstim.py --featname init_latent --use_stim ave --subject subj01
+python make_subjstim_copy.py --featname init_latent --use_stim each --subject subj01
+python make_subjstim_copy.py --featname init_latent --use_stim ave --subject subj01
 python make_subjstim_copy.py --featname c --use_stim each --subject subj01
-python make_subjstim.py --featname c --use_stim ave --subject subj01
+python make_subjstim_copy.py --featname c --use_stim ave --subject subj01
 python ridge_copy.py --target c --roi ventral --subject subj01
 python ridge_copy.py --target init_latent --roi early --subject subj01
 
 cd codes/diffusion_sd1/
-python diffusion_decoding_copy.py --imgidx 0 10 --gpu 1 --subject subj01 --method cvpr
+python diffusion_decoding_copy.py --imgidx 0 --gpu 0 --subject subj01 --method cvpr
 ```
 
 # Reconstruction with Decoded Text Prompt
@@ -115,7 +115,7 @@ python diffusion_decoding.py --imgidxs 0 1 --gpu 0 --subject subj01
 # Evaluation
 ```
 cd codes/utils/
-python img2feat_decoded.py --gpu 0 --subject subj01 --method cvpr
+python img2feat_decoded_copy.py --gpu 0 --subject subj01 --method cvpr
 python identification.py --usefeat inception --subject subj01 --method cvpr
 ```
 

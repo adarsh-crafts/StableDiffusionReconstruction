@@ -6,6 +6,7 @@ import pandas as pd
 import PIL
 import torch
 import numpy as np
+import joblib
 from omegaconf import OmegaConf
 from tqdm import trange
 from einops import rearrange
@@ -80,6 +81,12 @@ def main():
         type=str,
         help="cvpr or text or gan",
     )
+    parser.add_argument(
+        "--roi_latent",
+        type=str,
+        default="early",
+        help="ROI name used when decoding init_latent (must match ridge_copy.py --roi argument)",
+    )
 
     # Set parameters
     opt = parser.parse_args()
@@ -87,23 +94,24 @@ def main():
     imgidx = opt.imgidx
     gpu = opt.gpu
     method = opt.method
-    subject=opt.subject
+    subject = opt.subject
+    roi_latent = opt.roi_latent  # e.g. "early"
+
     gandir = f'../../decoded/gan_recon_img/all_layers/{subject}/streams/'
     captdir = f'../../decoded/{subject}/captions/'
 
     # Load NSD information
     nsd_expdesign = scipy.io.loadmat('../../nsd/nsddata/experiments/nsd/nsd_expdesign.mat')
 
-    # Note that mos of them are 1-base index!
+    # Note that most of them are 1-base index!
     # This is why I subtract 1
-    sharedix = nsd_expdesign['sharedix'] -1 
+    sharedix = nsd_expdesign['sharedix'] - 1
 
     nsda = NSDAccess('../../nsd/')
     sf = h5py.File(nsda.stimuli_file, 'r')
     sdataset = sf.get('imgBrick')
 
     stims_ave = np.load(f'../../mrifeat/{subject}/{subject}_stims_ave.npy')
-
 
     tr_idx = np.zeros_like(stims_ave)
     for idx, s in enumerate(stims_ave):
@@ -128,15 +136,13 @@ def main():
     precision = 'autocast'
     precision_scope = autocast if precision == "autocast" else nullcontext
     batch_size = n_samples
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    device = torch.device(f"cuda:{gpu}") if torch.cuda.is_available() else torch.device("cpu")
 
     outdir = f'../../decoded/image-{method}/{subject}/'
     os.makedirs(outdir, exist_ok=True)
 
     sample_path = os.path.join(outdir, f"samples")
     os.makedirs(sample_path, exist_ok=True)
-    precision = 'autocast'
-    device = torch.device(f"cuda:{gpu}") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
     sampler = DDIMSampler(model)
 
@@ -147,26 +153,34 @@ def main():
     print(f"target t_enc is {t_enc} steps")
 
     # Load z (Image)
-    imgidx_te = np.where(tr_idx==0)[0][imgidx] # Extract test image index
-    idx73k= stims_ave[imgidx_te]
+    imgidx_te = np.where(tr_idx == 0)[0][imgidx]  # Extract test image index
+    idx73k = stims_ave[imgidx_te]
     print("RECON idx73k:", idx73k)
-    Image.fromarray(np.squeeze(sdataset[idx73k,:,:,:]).astype(np.uint8)).save(
-        os.path.join(sample_path, f"{imgidx:05}_org.png"))    
-    
-    if method in ['cvpr','text']:
-        roi_latent = 'early'
+    Image.fromarray(np.squeeze(sdataset[idx73k, :, :, :]).astype(np.uint8)).save(
+        os.path.join(sample_path, f"{imgidx:05}_org.png"))
+
+    if method in ['cvpr', 'text']:
         scores_latent = np.load(f'../../decoded/{subject}/{subject}_{roi_latent}_scores_init_latent.npy')
-        latent = scores_latent[imgidx,:]
-        latent = (latent - latent.mean()) / (latent.std() + 1e-6)
+        latent = scores_latent[imgidx, :]
+
+        # --- Load the Y scaler saved during ridge training and inverse-transform ---
+        # This reverses the StandardScaler applied to Y during training, restoring
+        # predictions to the original latent feature space.
+        # (Replaces the old per-sample z-score: latent = (latent - mean) / std)
+        scaler_path = f'../../decoded/{subject}/{subject}_{roi_latent}_y_scaler_init_latent.pkl'
+        scaler = joblib.load(scaler_path)
+
+        latent = latent.astype(np.float32, copy=False)
+        latent *= scaler["scale"]
+        latent += scaler["mean"]
 
         imgarr = torch.tensor(
-            latent.reshape(4,40,40),
+            latent.reshape(4, 40, 40),
             device=device,
-            dtype=model.dtype  # 🔥 critical fix
+            dtype=model.dtype
         ).unsqueeze(0)
 
         # Generate image from Z
-        precision_scope = autocast if precision == "autocast" else nullcontext
         with torch.no_grad():
             with precision_scope("cuda"):
                 with model.ema_scope():
@@ -175,12 +189,12 @@ def main():
 
                     for x_sample in x_samples:
                         x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-        im = Image.fromarray(x_sample.astype(np.uint8)).resize((512,512))
+        im = Image.fromarray(x_sample.astype(np.uint8)).resize((512, 512))
         im = np.array(im)
 
     elif method == 'gan':
         ganpath = f'{gandir}/recon_image_normalized-VGG19-fc8-{subject}-streams-{imgidx:06}.tiff'
-        im = Image.open(ganpath).resize((512,512))
+        im = Image.open(ganpath).resize((512, 512))
         im = np.array(im)
 
     init_image = load_img_from_arr(im).to(device=device, dtype=model.dtype)
@@ -190,10 +204,20 @@ def main():
     if method == 'cvpr':
         roi_c = 'ventral'
         scores_c = np.load(f'../../decoded/{subject}/{subject}_{roi_c}_scores_c.npy')
-        carr = scores_c[imgidx,:].reshape(77,768)
+        c_latent = scores_c[imgidx, :]
+
+        # Inverse-transform c predictions back to original feature space
+        c_scaler_path = f'../../decoded/{subject}/{subject}_{roi_c}_y_scaler_c.pkl'
+        c_scaler = joblib.load(c_scaler_path)
+
+        c_latent = c_latent.astype(np.float32, copy=False)
+        c_latent *= c_scaler["scale"]
+        c_latent += c_scaler["mean"]
+
+        carr = c_latent.reshape(77, 768)
         c = torch.Tensor(carr).unsqueeze(0).to('cuda')
-    elif method in ['text','gan']:
-        captions = pd.read_csv(f'{captdir}/captions_brain.csv', sep='\t',header=None)
+    elif method in ['text', 'gan']:
+        captions = pd.read_csv(f'{captdir}/captions_brain.csv', sep='\t', header=None)
         c = model.get_learned_conditioning(captions.iloc[imgidx][0]).to('cuda')
 
     # Generate image from Z (image) + C (semantics)
@@ -205,10 +229,10 @@ def main():
                     uc = model.get_learned_conditioning(batch_size * [""])
 
                     # encode (scaled latent)
-                    z_enc = sampler.stochastic_encode(init_latent, torch.tensor([t_enc]*batch_size).to(device))
+                    z_enc = sampler.stochastic_encode(init_latent, torch.tensor([t_enc] * batch_size).to(device))
                     # decode it
                     samples = sampler.decode(z_enc, c, t_enc, unconditional_guidance_scale=scale,
-                                            unconditional_conditioning=uc,)
+                                             unconditional_conditioning=uc,)
 
                     x_samples = model.decode_first_stage(samples)
                     x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
@@ -216,7 +240,7 @@ def main():
                     for x_sample in x_samples:
                         x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                     Image.fromarray(x_sample.astype(np.uint8)).save(
-                        os.path.join(sample_path, f"{imgidx:05}_{base_count:03}.png"))    
+                        os.path.join(sample_path, f"{imgidx:05}_{base_count:03}.png"))
                     base_count += 1
 
 

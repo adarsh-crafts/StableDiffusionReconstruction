@@ -35,7 +35,7 @@ We confirmed that adding several techniques contribute to improving the accuracy
 # MRI Preprocessing
 ```
 cd codes/utils/
-python make_subjmri.py --subject subj01
+python make_subjmri_copy.py --subject subj01
 ```
 
 # Reconstruction based on CVPR method

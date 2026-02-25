@@ -98,46 +98,28 @@ def main():
         del X_te_list
     print(f'[MEM] after X/X_te load: {mem():.2f} GB')
 
-    # Load Y via mmap, cast in-place to avoid a second full allocation
-    Y_raw = np.load(f'{featdir}/{subject}_each_{target}_tr.npy', mmap_mode='r')
+    # Load Y via mmap (NO scaling, NO copy explosion)
+    Y_raw = np.load(
+        f'{featdir}/{subject}_each_{target}_tr.npy',
+        mmap_mode='r'
+    )
     Y = Y_raw.reshape([X.shape[0], -1])
-    del Y_raw
 
     print(f'[MEM] after Y/Y_te load: {mem():.2f} GB')
     print(f'[MEM] available RAM: {psutil.virtual_memory().available / 1024**3:.2f} GB')
 
-    # --- Standardize Y using StandardScaler fit on train set only ---
-    # ---- Manual float32 standardization (avoid sklearn float64 allocations) ----
-    Y = Y.astype(np.float32, copy=False)
-
-    y_mean = Y.mean(axis=0, dtype=np.float32)
-    y_std = Y.std(axis=0, dtype=np.float32)
-
-    # prevent divide-by-zero
-    y_std[y_std == 0] = 1.0
-
-    Y -= y_mean
-    Y /= y_std
-
-    scaler_path = os.path.join(savedir, f'{subject}_{"_".join(roi)}_y_scaler_{target}.pkl')
-    joblib.dump({"mean": y_mean, "scale": y_std}, scaler_path)
-
-    Y_scaled = Y
-    print(f'Y scaler saved to {scaler_path}')
-
     print(f'Now making decoding model for... {subject}:  {roi}, {target}')
-    print(f'X {X.shape}, Y {Y_scaled.shape}, X_te {X_te.shape}')
+    print(f'X {X.shape}, Y {Y.shape}, X_te {X_te.shape}')
     print(f'[MEM] before fit: {mem():.2f} GB')
     print(ridge.get_params())
 
-    # Train Ridge on standardized Y
-    pipeline.fit(X, Y_scaled)
+    # Train Ridge
+    pipeline.fit(X, Y)
     print(f'[MEM] after fit: {mem():.2f} GB')
 
     # Free training data before predict allocates workspace
     del X
     del Y
-    del Y_scaled
     import gc
     gc.collect()
 
@@ -147,21 +129,15 @@ def main():
     Y_te = Y_te_raw.reshape([X_te.shape[0], -1]).astype("float32")
     del Y_te_raw
 
-    # Predictions are in standardized space; inverse-transform for evaluation
-    scores_scaled = pipeline.predict(X_te)
+    # Predictions
+    scores = pipeline.predict(X_te)
     print(f'[MEM] after predict: {mem():.2f} GB')
     del X_te
 
-    # Evaluate in original Y space by inverse-transforming for correlation only
-    # inverse-transform in-place to avoid allocating new array
-    scores_scaled *= y_std
-    scores_scaled += y_mean
-
-    rs = correlation_score(Y_te.T, scores_scaled.T)
+    rs = correlation_score(Y_te.T, scores.T)
     print(f'Prediction accuracy is: {np.mean(rs):3.3}')
 
-    # Save standardized predictions — inverse_transform will be applied in diffusion_decoding_copy.py
-    np.save(f'{savedir}/{subject}_{"_".join(roi)}_scores_{target}.npy', scores_scaled)
+    np.save(f'{savedir}/{subject}_{"_".join(roi)}_scores_{target}.npy', scores)
 
 if __name__ == "__main__":
     main()
